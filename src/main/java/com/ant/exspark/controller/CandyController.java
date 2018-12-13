@@ -14,17 +14,17 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class CandyController {
 
-
-
+    private  static  long TIMEOUT = 10*1000;
 
     @Autowired private  CandyStock candyStock;
     @Autowired private RedisLock redisLock;
 
     @GetMapping(path = "/getcandy")
     public String get(){
-        discreateStock("candy",String.valueOf(System.currentTimeMillis()));
-        log.info("抢糖果！"+candyStock.getStockNum());
-        return " get candy success! ";
+        //设置value 值 为预计超时时间
+        String res=discreateStock("candy",String.valueOf(System.currentTimeMillis()+TIMEOUT));
+        log.info(res);
+        return " get candy success! "+res;
     }
 
     @GetMapping(path = "/showstock")
@@ -32,10 +32,13 @@ public class CandyController {
         return  "current stock :"+candyStock.getStockNum().toString();
     }
 
-    private void discreateStock(String key ,String value){
-        redisLock.lock(key, value);
+    private String discreateStock(String key ,String value){
+        if(redisLock.lock(key, value)){
+            return "oh , too much request ,try again!";
+        }
         candyStock.disStock();
         redisLock.unlock(key, value);
+        return "nice , git it!";
     }
 
     //init
